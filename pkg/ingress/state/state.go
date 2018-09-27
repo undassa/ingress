@@ -26,9 +26,7 @@ const logLevel = 3
 
 type State struct {
 	ingress   *IngressState
-	networks  *NetworkState
 	routes    *RouteState
-	endpoints *EndpointState
 }
 
 type IngressState struct {
@@ -40,30 +38,16 @@ func (s *State) Ingress() *IngressState {
 	return s.ingress
 }
 
-func (s *State) Networks() *NetworkState {
-	return s.networks
-}
-
 func (s *State) Routes() *RouteState {
 	return s.routes
-}
-
-func (s *State) Endpoints() *EndpointState {
-	return s.endpoints
 }
 
 func New() *State {
 
 	state := State{
 		ingress: new(IngressState),
-		networks: &NetworkState{
-			subnets: make(map[string]types.NetworkState, 0),
-		},
 		routes: &RouteState{
 			routes: make(map[string]*types.RouteManifest, 0),
-		},
-		endpoints: &EndpointState{
-			endpoints: make(map[string]*types.EndpointState, 0),
 		},
 	}
 

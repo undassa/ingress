@@ -56,7 +56,7 @@ func (c *Controller) Connect(ctx context.Context) error {
 	opts := v1.Request().Ingress().IngressConnectOptions()
 	opts.Info = envs.Get().GetState().Ingress().Info
 	opts.Status = envs.Get().GetState().Ingress().Status
-	opts.Network = *envs.Get().GetCNI().Info(ctx)
+	opts.Network = *envs.Get().GetNet().Info(ctx)
 
 	for {
 		err := envs.Get().GetClient().Connect(ctx, opts)

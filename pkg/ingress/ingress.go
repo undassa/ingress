@@ -27,8 +27,7 @@ import (
 	"github.com/lastbackend/lastbackend/pkg/api/client"
 	"github.com/lastbackend/lastbackend/pkg/distribution/types"
 	"github.com/lastbackend/lastbackend/pkg/log"
-	"github.com/lastbackend/lastbackend/pkg/runtime/cni/cni"
-	"github.com/lastbackend/lastbackend/pkg/runtime/cpi/cpi"
+	"github.com/lastbackend/lastbackend/pkg/network"
 	"github.com/spf13/viper"
 	"os"
 	"os/signal"
@@ -48,26 +47,13 @@ func Daemon() bool {
 	log.New(viper.GetInt("verbose"))
 	log.Info("Start Ingress server")
 
-	_cni, err := cni.New()
+	net, err := network.New()
 	if err != nil {
-		log.Errorf("Cannot initialize cni: %v", err)
+		log.Errorf("can not initialize network: %s", err.Error())
+		os.Exit(1)
 	}
 
-	_cpi, err := cpi.New()
-	if err != nil {
-		log.Errorf("Cannot initialize cni: %v", err)
-	}
-
-	envs.Get().SetCNI(_cni)
-	envs.Get().SetCPI(_cpi)
-
-	ip := viper.GetString("ingress.resolver.ip")
-	if ip == types.EmptyString {
-		ip = "172.17.0.1"
-	}
-	envs.Get().SetDNSResolver(ip)
-	envs.Get().SetExternalDNS(viper.GetStringSlice("dns.ips"))
-
+	envs.Get().SetNet(net)
 	st := state.New()
 
 	st.Ingress().Info = runtime.IngressInfo()

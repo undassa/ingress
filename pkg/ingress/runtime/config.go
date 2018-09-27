@@ -71,7 +71,7 @@ func configSync() error {
 		Resolver string
 		Routes map[string]*types.RouteManifest
 	}{
-		Resolver: envs.Get().GetDNSResolver(),
+		Resolver: envs.Get().GetNet().GetResolverIP(),
 		Routes: routes,
 	}
 
