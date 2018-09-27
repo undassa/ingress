@@ -1,0 +1,60 @@
+== Getting Started
+
+=== Build
+
+==== Prerequisites
+
+- Go 1.7 or higher
+- Go docker client v17.03
+- Go etcd client for v3
+- Git
+
+
+[source,bash]
+----
+$ go get github.com/lastbackend/ingress
+$ cd ${GOPATH:-~/go}/src/github.com/lastbackend/ingress
+$ make deps && make build && make install
+----
+
+=== Create local development environment
+
+use docker-machine to create nodes for ingress
+
+[source,bash]
+----
+# set sources path
+export LB_SOURCES_PATH=/opt/src/github.com/lastbackend/ingress
+cd ${LB_SOURCES_PATH}
+make deps
+
+# create ingress node
+docker-machine create --driver virtualbox --virtualbox-hostonly-cidr "192.168.99.110/24" --engine-opt bip=10.30.0.1/16 --engine-opt mtu=1450 ingress
+
+# note: for virtulabox driver we can mount host dir into docker-machine with this command
+docker-machine stop ingress
+VBoxManage sharedfolder add ingress --name /lastbackend --hostpath $LB_SOURCES_PATH --automount
+docker-machine start ingress
+
+# fetch deps
+docker run --rm -it  \
+      -v /lastbackend:/go/src/github.com/lastbackend/ingress \
+      -w /go/src/github.com/lastbackend/ingress \
+      --name=deps \
+      --net=host \
+      golang ./hack/bootstrap.sh
+
+# run Last.Backend Cluster API from sources in docker
+docker run -d -it --restart=always \
+      -v /lastbackend:/go/src/github.com/lastbackend/ingress \
+      -v /lastbackend/contrib/config.yml:/etc/lastbackend/config.yml \
+      -v /lib/modules:/lib/modules:rw \
+      -w /go/src/github.com/lastbackend/ingress \
+      --name=ingress \
+      --net=host \
+      --privileged \
+      lastbackend/ingress go run ./cmd/ingress/ingress.go -c /etc/lastbackend/config.yml
+
+# check logs
+docker logs -f ingress
+----
