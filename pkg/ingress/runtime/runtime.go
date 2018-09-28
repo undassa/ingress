@@ -86,6 +86,8 @@ func (r *Runtime) Loop(ctx context.Context) {
 					endpoints := envs.Get().GetNet().Endpoints().GetEndpoints()
 					for e := range endpoints {
 
+						log.Debugf("check endpoint: %s", e)
+
 						if e == envs.Get().GetNet().GetResolverEndpointKey() {
 							continue
 						}
@@ -103,6 +105,7 @@ func (r *Runtime) Loop(ctx context.Context) {
 							envs.Get().GetNet().SubnetDestroy(ctx, cidr)
 						}
 					}
+
 				}
 
 				if len(spec.Meta.Discovery) != 0 {

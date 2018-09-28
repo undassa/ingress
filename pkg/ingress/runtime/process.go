@@ -48,40 +48,20 @@ func (hp *Process) manage() error {
 		process *os.Process
 	)
 
-	_, _, _, pidpath := envs.Get().GetTemplate()
 
-	if pidpath == types.EmptyString {
-		pidpath = hPid
-	}
 
-	pf, err := os.Open(pidpath)
-	if err != nil && !os.IsNotExist(err) {
-		log.Errorf("can not open pid file: %s", err.Error())
+	pid := hp.getPid()
+
+	process, err := os.FindProcess(int(pid))
+	if err != nil {
+		fmt.Printf("Failed to find process: %s\n", err)
 		return err
 	}
-	pf.Close()
 
-	if !os.IsNotExist(err) {
-		d, err := ioutil.ReadFile(pidpath)
-		if err != nil {
-			return err
-		}
-
-		pid, err := strconv.Atoi(string(bytes.TrimSpace(d)))
-		if err != nil {
-			return fmt.Errorf("error parsing pid from %s: %s", pidpath, err)
-		}
-
-		process, err = os.FindProcess(int(pid))
-		if err != nil {
-			fmt.Printf("Failed to find process: %s\n", err)
-			return err
-		}
-
-		if err := process.Signal(syscall.Signal(0)); err == nil {
-			hp.process = process
-		}
+	if err := process.Signal(syscall.Signal(0)); err == nil {
+		hp.process = process
 	}
+
 
 	if hp.process == nil {
 		log.Debug("running process not found: start new")
@@ -136,7 +116,6 @@ func (hp *Process) start() (*os.Process, error) {
 func (hp *Process) reload() error {
 
 	log.Debug("reload haproxy process")
-
 	var ports = make(map[int]bool, 0)
 	routes := envs.Get().GetState().Routes().GetRoutes()
 
@@ -154,9 +133,13 @@ func (hp *Process) reload() error {
 	}
 
 	bin := envs.Get().GetHaproxy()
-	_, path, cfg, _ := envs.Get().GetTemplate()
+	_, path, cfg, pidpath := envs.Get().GetTemplate()
+	if pidpath == types.EmptyString {
+		pidpath = hPid
+	}
 
-	cmd := exec.Command(bin, "-f", filepath.Join(path, cfg), "-D", "-p", hPid, "-sf", fmt.Sprintf("%d", hp.process.Pid))
+	pid := hp.getPid()
+	cmd := exec.Command(bin, "-f", filepath.Join(path, cfg), "-p", pidpath, "-sf", fmt.Sprintf("%d", pid))
 	cmd.Stdout = os.Stdout
 
 	for port := range ports {
@@ -175,5 +158,42 @@ func (hp *Process) reload() error {
 		c.Start()
 	}
 
+	hp.process = cmd.Process
 	return nil
+}
+
+func (hp *Process) getPid() int {
+
+	_, _, _, pidpath := envs.Get().GetTemplate()
+
+	if pidpath == types.EmptyString {
+		pidpath = hPid
+	}
+
+	pf, err := os.Open(pidpath)
+	if err != nil && !os.IsNotExist(err) {
+		log.Errorf("can not open pid file: %s", err.Error())
+		return 0
+	}
+	pf.Close()
+
+	if os.IsNotExist(err) {
+		return 0
+	}
+
+	d, err := ioutil.ReadFile(pidpath)
+	if err != nil {
+		return 0
+	}
+
+	pid, err := strconv.Atoi(string(bytes.TrimSpace(d)))
+	if err != nil {
+		log.Errorf("error parsing pid from %s: %s", pidpath, err)
+		return 0
+	}
+
+	return pid
+
+
+	return 0
 }

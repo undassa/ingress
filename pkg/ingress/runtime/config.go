@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/lastbackend/lastbackend/pkg/distribution/errors"
@@ -39,6 +40,25 @@ const (
 	ConfigName      = "haproxy.cfg"
 	logConfigPrefix = "runtime:config"
 )
+
+
+type conf struct {
+	Resolver string
+	Frontend map[uint16]*confFrontend
+	Backend map[string]*confBackend
+}
+
+type confFrontend struct {
+	Type string
+	Rules map[string]map[string]string
+}
+
+type confBackend struct {
+	Domain string
+	Type string
+	Endpoint string
+	Port uint16
+}
 
 func configCheck() error {
 
@@ -67,13 +87,66 @@ func configSync() error {
 
 	log.Debugf("Update routes: %d", len(routes))
 
-	var cfg = struct {
-		Resolver string
-		Routes map[string]*types.RouteManifest
-	}{
-		Resolver: envs.Get().GetNet().GetResolverIP(),
-		Routes: routes,
+	var cfg = conf{}
+	cfg.Resolver = envs.Get().GetNet().GetResolverIP()
+	cfg.Frontend = make(map[uint16]*confFrontend, 0)
+	cfg.Backend  = make(map[string]*confBackend, 0)
+
+	for n, r := range routes {
+
+		log.Debugf("route configure: %s", n)
+
+		var tp string
+		switch r.Port {
+		case 80:
+			tp = "http"
+			break
+		case 443:
+			tp = "https"
+			break
+		default:
+			tp = "tcp"
+		}
+
+		if r.Port == 0 {
+			continue
+		}
+
+		var frontend *confFrontend
+
+		if _, ok := cfg.Frontend[r.Port]; ok {
+			frontend = cfg.Frontend[r.Port]
+		} else {
+			frontend = new(confFrontend)
+			frontend.Type = tp
+			frontend.Rules = make(map[string]map[string]string, 0)
+			cfg.Frontend[r.Port] = frontend
+		}
+
+		if _, ok := frontend.Rules[r.Domain]; !ok {
+			frontend.Rules[r.Domain] = make(map[string]string, 0)
+		}
+
+
+		for _, b := range r.Rules {
+
+			name := fmt.Sprintf("%s_%d", strings.Replace(n, ":","_", -1), b.Port)
+			log.Debugf("create new backend: %s", name)
+
+
+			backend := new(confBackend)
+			backend.Type = tp
+			backend.Port = uint16(b.Port)
+			backend.Endpoint = b.Endpoint
+			backend.Domain = r.Domain
+
+			cfg.Backend[name] = backend
+			frontend.Rules[r.Domain][b.Path] = name
+		}
+
 	}
+
+
 
 	buf := &bytes.Buffer{}
 	tpl.Execute(buf, cfg)

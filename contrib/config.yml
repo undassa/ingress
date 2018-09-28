@@ -9,8 +9,6 @@ api:
     ca: "/opt/cert/lastbackend/ca.pem"
     cert: "/opt/cert/lastbackend/client.pem"
     key: "/opt/cert/lastbackend/client-key.pem"
-dns:
-  ips: ["192.168.99.100"]
 
 haproxy:
   path: "/var/run/lastbackend/ingress/haproxy"
@@ -19,9 +17,8 @@ haproxy:
 
 # Runtime
 runtime:
+  interface: "eth1"
   cni:
     type: "vxlan"
-    interface: "eth1"
   cpi:
     type: "ipvs"
-    interface: "eth1"

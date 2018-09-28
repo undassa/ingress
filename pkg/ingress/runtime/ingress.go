@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/lastbackend/lastbackend/pkg/distribution/types"
 	"github.com/lastbackend/lastbackend/pkg/util/system"
+	"github.com/spf13/viper"
 	"os"
 )
 
@@ -37,7 +38,8 @@ func IngressInfo() types.IngressInfo {
 		_ = fmt.Errorf("get hostname err: %s", err)
 	}
 
-	ip, err := system.GetHostIP()
+	iface := viper.GetString("runtime.interface")
+	ip, err := system.GetHostIP(iface)
 	if err != nil {
 		_ = fmt.Errorf("get ip err: %s", err)
 	}

@@ -36,7 +36,6 @@ import (
 )
 
 
-
 func Daemon() bool {
 
 	var (
@@ -52,8 +51,8 @@ func Daemon() bool {
 		log.Errorf("can not initialize network: %s", err.Error())
 		os.Exit(1)
 	}
-
 	envs.Get().SetNet(net)
+
 	st := state.New()
 
 	st.Ingress().Info = runtime.IngressInfo()
@@ -68,6 +67,11 @@ func Daemon() bool {
 	envs.Get().SetHaproxy(viper.GetString("haproxy.exec"))
 
 	r := runtime.NewRuntime()
+	go func() {
+		types.SecretAccessToken = viper.GetString("token")
+		r.Restore(context.Background())
+		r.Loop(context.Background())
+	}()
 
 	if viper.IsSet("api") || viper.IsSet("api_uri") {
 
@@ -102,11 +106,7 @@ func Daemon() bool {
 		go ctl.Sync(context.Background())
 	}
 
-	go func() {
-		types.SecretAccessToken = viper.GetString("token")
-		r.Restore(context.Background())
-		r.Loop(context.Background())
-	}()
+
 
 	// Handle SIGINT and SIGTERM.
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
