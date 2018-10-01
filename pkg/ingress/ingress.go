@@ -95,7 +95,7 @@ func Daemon() bool {
 			log.Errorf("Init client err: %s", err)
 		}
 
-		c := rest.V1().Ingress(st.Ingress().Info.Hostname)
+		c := rest.V1().Cluster().Ingress(st.Ingress().Info.Hostname)
 		envs.Get().SetClient(c)
 		ctl := controller.New(r)
 
